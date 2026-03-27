@@ -17,7 +17,6 @@
         .card { border: none; border-radius: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
         .form-control, .form-select { border-radius: 12px; padding: 12px; border: 1px solid #e2e8f0; font-size: 0.9rem; }
         
-        /* Paneles Detalle */
         .info-panel { border-radius: 20px; padding: 25px; height: 100%; border: 1px solid #edf2f7; background: white; position: relative; }
         .panel-emision { border-left: 8px solid #2563eb; }
         .panel-liquidacion { border-left: 8px solid #16a34a; background: #f0fdf4; }
@@ -27,18 +26,18 @@
         .panel-monto { font-size: 2.2rem; font-weight: 800; margin-top: 20px; color: #1e293b; }
         .panel-vuelto { font-size: 2.2rem; font-weight: 800; color: #16a34a; margin-top: 20px; }
 
-        /* Estilos Impresión */
         #print-section { display: none; }
         .pdf-area { width: 140mm; padding: 10mm; background: white; color: black; }
         .pdf-box { border: 2px solid black; padding: 20px; min-height: 190mm; display: flex; flex-direction: column; font-family: 'Arial', sans-serif; }
         .pdf-header { border-bottom: 2px solid black; padding-bottom: 10px; margin-bottom: 15px; position: relative; text-align: center; }
-        .pdf-logo { position: absolute; left: 0; top: -5px; width: 55px; height: 55px; object-fit: contain; }
+        .pdf-logo { position: absolute; left: 0; top: -5px; width: 55px; }
         .pdf-title { font-weight: 900; font-size: 1.1rem; margin-top: 5px; }
         .pdf-subtitle { font-size: 0.7rem; font-weight: bold; letter-spacing: 1px; }
         
+        /* Ajustes solicitados para el cuadro de monto */
         .pdf-monto-box { border: 2px solid black; background: #eee !important; padding: 8px; text-align: center; margin: 15px 0; }
         .pdf-monto-txt { font-size: 22px; font-weight: 900; margin: 0; }
-        .pdf-letras { font-size: 10px; font-weight: bold; text-transform: uppercase; margin-top: 4px; display: block; border-top: 1px solid #ccc; padding-top: 4px; }
+        .pdf-letras { font-size: 11px; font-weight: bold; text-transform: uppercase; margin-top: 4px; display: block; border-top: 1px solid #ccc; padding-top: 4px; }
     </style>
 </head>
 <body>
@@ -124,17 +123,17 @@
     <div class="pdf-area">
         <div class="pdf-box">
             <div class="pdf-header">
-                <img src="https://images.seeklogo.com/logo-png/2/1/ccss-logo-png_seeklogo-27497.png" class="pdf-logo" crossorigin="anonymous">
+                <img src="https://images.seeklogo.com/logo-png/2/1/ccss-logo-png_seeklogo-27497.png" class="pdf-logo">
                 <div class="pdf-title">CAJA COSTARRICENSE DE SEGURO SOCIAL</div>
-                <div class="pdf-subtitle">SISTEMA VALEFLOW ELITE V2.0</div>
+                <div class="pdf-subtitle">VALE PROVISIONAL</div>
             </div>
             <div style="display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 15px;">
                 <span>REF: <span id="p-cons"></span></span>
                 <span>FECHA: <span id="p-fecha"></span></span>
             </div>
-            <div style="line-height: 2; font-size: 14px;">
-                <p><b>FUNCIONARIO:</b> <span id="p-nombre" style="text-transform: uppercase;"></span></p>
+            <div style="line-height: 2; font-size: 13px;">
                 <p><b>CÉDULA:</b> <span id="p-cedula"></span></p>
+                <p><b>FUNCIONARIO:</b> <span id="p-nombre" style="text-transform: uppercase;"></span></p>
                 <p><b>AUTORIZADO POR:</b> <span id="p-autoriza"></span></p>
             </div>
             <div class="pdf-monto-box">
@@ -142,15 +141,16 @@
                 <span id="p-monto-letras" class="pdf-letras"></span>
             </div>
             <p style="font-size: 14px;"><b>CONCEPTO:</b> <span id="p-concepto"></span></p>
-            <div style="border: 1.5px solid black; padding: 12px; font-size: 11px; margin-top: auto;">
-                <p style="text-align:center; font-weight:bold; text-decoration: underline; margin-bottom: 8px;">CONTROL MANUAL DE CAJA</p>
-                <p>FECHA LIQ: <b id="p-fecha-liq">__________</b> GASTO: <b id="p-gasto">₡ __________</b> VUELTO: <b id="p-vuelto">₡ __________</b></p>
-                <p>RECIBIDO POR: <b id="p-recibe">__________________________________________________</b></p>
-            </div>
-            <div style="display: flex; justify-content: space-between; margin-top: 40px;">
+                <div style="display: flex; justify-content: space-between; margin-top: 40px;">
                 <div style="border-top: 1.5px solid black; width: 42%; text-align: center; font-weight: bold; font-size: 10px; padding-top: 5px;">ENTREGUÉ CONFORME</div>
                 <div style="border-top: 1.5px solid black; width: 42%; text-align: center; font-weight: bold; font-size: 10px; padding-top: 5px;">RECIBÍ CONFORME</div>
             </div>
+            <div style="border: 1.5px solid black; padding: 12px; font-size: 11px; margin-top: auto;">
+                <p style="text-align:center; font-weight:bold; text-decoration: underline; margin-bottom: 8px;">LIQUIDACION COMPLETA</p>
+                <p>FECHA LIQ: <b id="p-fecha-liq">__________</b> GASTO: <b id="p-gasto">₡ __________</b> SUMA A DEVOLVER: <b id="p-vuelto">₡ __________</b></p>
+                <p>RECIBIDO POR: <b id="p-recibe">__________________________________________________</b></p>
+            </div>
+            
         </div>
     </div>
 </div>
@@ -173,7 +173,8 @@
         const centenas = ["", "CIENTO", "DOSCIENTOS", "TRESCIENTOS", "CUATROCIENTOS", "QUINIENTOS", "SEISCIENTOS", "SETECIENTOS", "OCHOCIENTOS", "NOVECIENTOS"];
 
         if (num == 0) return "CERO COLONES EXACTOS";
-        
+        if (num == 100) return "CIEN COLONES EXACTOS";
+
         function convertir(n) {
             if (n < 10) return unidades[n];
             if (n < 20) return decenas[n - 10];
@@ -242,20 +243,18 @@
         document.getElementById('p-concepto').innerText = v.concepto;
         document.getElementById('p-fecha').innerText = v.fechaLocal;
 
+        if (v.estadoFoto === '✅ Liquidado') {
+            document.getElementById('p-fecha-liq').innerText = v.fechaLiq;
+            document.getElementById('p-gasto').innerText = `₡${v.totalGasto.toLocaleString()}`;
+            document.getElementById('p-vuelto').innerText = `₡${v.sumaDevolver.toLocaleString()}`;
+            document.getElementById('p-recibe').innerText = v.recibidoPor;
+        }
+
         const element = document.getElementById('print-section');
         element.style.display = 'block';
-        
-        const opt = { 
-            margin: 0, 
-            filename: `Vale_${v.consecutivo}.pdf`, 
-            image: { type: 'jpeg', quality: 0.98 }, 
-            html2canvas: { scale: 3, useCORS: true, logging: false }, 
-            jsPDF: { unit: 'mm', format: 'a5', orientation: 'portrait' } 
-        };
-
-        html2pdf().set(opt).from(element).save().then(() => {
-            element.style.display = 'none';
-        });
+        const opt = { margin: 0, filename: `Vale_${v.consecutivo}.pdf`, image: { type: 'jpeg', quality: 1 }, 
+                      html2canvas: { scale: 3, useCORS: true }, jsPDF: { unit: 'mm', format: 'a5', orientation: 'portrait' } };
+        html2pdf().set(opt).from(element).save().then(() => element.style.display = 'none');
     }
 
     db.collection("vales").orderBy("fechaISO", "desc").onSnapshot(snap => {
@@ -314,7 +313,11 @@
         };
         await db.collection("vales").doc(id).update(data);
         bModalLiq.hide();
-        Swal.fire({ title: "Liquidado", html: `Suma a devolver: <br><b class="fs-2 text-success">₡${vuelto.toLocaleString()}</b>`, icon: "success" });
+        Swal.fire({
+            title: "Liquidado",
+            html: `Suma a devolver: <br><b class="fs-2 text-success">₡${vuelto.toLocaleString()}</b>`,
+            icon: "success"
+        });
     }
 
     async function reimprimir(id) { const doc = await db.collection("vales").doc(id).get(); if(doc.exists) imprimirPDF(doc.data()); }
