@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ValeFlow Elite v2.0</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f4f7fa; color: #1a202c; }
+        .card { border: none; border-radius: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+        .form-control, .form-select { border-radius: 12px; padding: 12px; border: 1px solid #e2e8f0; font-size: 0.9rem; }
+        
+        /* Paneles Detalle */
+        .info-panel { border-radius: 20px; padding: 25px; height: 100%; border: 1px solid #edf2f7; background: white; position: relative; }
+        .panel-emision { border-left: 8px solid #2563eb; }
+        .panel-liquidacion { border-left: 8px solid #16a34a; background: #f0fdf4; }
+        .panel-titulo { font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 20px; }
+        .panel-data { display: flex; justify-content: space-between; border-bottom: 1px dashed #e2e8f0; padding: 10px 0; font-size: 0.9rem; color: #4a5568; }
+        .panel-data b { color: #a0aec0; font-size: 0.75rem; text-transform: uppercase; font-weight: 700; }
+        .panel-monto { font-size: 2.2rem; font-weight: 800; margin-top: 20px; color: #1e293b; }
+        .panel-vuelto { font-size: 2.2rem; font-weight: 800; color: #16a34a; margin-top: 20px; }
+
+        /* Estilos Impresión */
+        #print-section { display: none; }
+        .pdf-area { width: 140mm; padding: 10mm; background: white; color: black; }
+        .pdf-box { border: 2px solid black; padding: 20px; min-height: 190mm; display: flex; flex-direction: column; font-family: 'Arial', sans-serif; }
+        .pdf-header { border-bottom: 2px solid black; padding-bottom: 10px; margin-bottom: 15px; position: relative; text-align: center; }
+        .pdf-logo { position: absolute; left: 0; top: -5px; width: 55px; height: 55px; object-fit: contain; }
+        .pdf-title { font-weight: 900; font-size: 1.1rem; margin-top: 5px; }
+        .pdf-subtitle { font-size: 0.7rem; font-weight: bold; letter-spacing: 1px; }
+        
+        .pdf-monto-box { border: 2px solid black; background: #eee !important; padding: 8px; text-align: center; margin: 15px 0; }
+        .pdf-monto-txt { font-size: 22px; font-weight: 900; margin: 0; }
+        .pdf-letras { font-size: 10px; font-weight: bold; text-transform: uppercase; margin-top: 4px; display: block; border-top: 1px solid #ccc; padding-top: 4px; }
+    </style>
+</head>
+<body>
+
+<nav class="navbar bg-white border-bottom mb-4">
+    <div class="container-fluid px-4">
+        <span class="navbar-brand fw-bold text-primary"><i class="bi bi-lightning-charge-fill me-2"></i>ValeFlow Elite v2.0</span>
+    </div>
+</nav>
+
+<div class="container-fluid px-4">
+    <div class="row g-4">
+        <div class="col-12 col-lg-4">
+            <div class="card p-4 sticky-top" style="top: 20px;">
+                <div class="next-id-box" style="background: #ebf4ff; border: 2px dashed #2563eb; border-radius: 15px; padding: 10px; text-align: center; margin-bottom: 20px;">
+                    <small class="text-primary fw-bold text-uppercase" style="font-size: 10px;">Referencia Siguiente</small>
+                    <div id="next-id-display" class="fs-4 fw-800 text-primary font-monospace">...</div>
+                </div>
+                <div class="row g-3">
+                    <div class="col-12"><label class="small fw-bold text-muted">Cédula</label><input type="text" id="f-cedula" class="form-control req" oninput="buscarFuncionario(this.value); validar();"></div>
+                    <div class="col-12"><label class="small fw-bold text-muted">Funcionario</label><input type="text" id="f-nombre" class="form-control text-uppercase req" oninput="validar()"></div>
+                    <div class="col-12"><label class="small fw-bold text-muted">Autorizado Por</label><select id="f-autoriza" class="form-select req selector-tramitadores" onchange="validar()"></select></div>
+                    <div class="col-12"><label class="small fw-bold text-muted">Monto ₡</label><input type="number" id="f-monto" class="form-control fw-bold req" oninput="validar()"></div>
+                    <div class="col-12"><label class="small fw-bold text-muted">Concepto</label><textarea id="f-concepto" rows="2" class="form-control req" oninput="validar()"></textarea></div>
+                    <button id="btn-registrar" onclick="crearVale()" class="btn btn-primary py-3 fw-bold w-100" disabled><i class="bi bi-printer-fill me-2"></i> REGISTRAR E IMPRIMIR</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-8">
+            <div class="card overflow-hidden">
+                <table class="table align-middle mb-0">
+                    <thead class="bg-light">
+                        <tr class="small text-uppercase text-muted">
+                            <th class="px-4 py-3">Referencia</th>
+                            <th class="px-4 py-3">Funcionario / Monto</th>
+                            <th class="px-4 py-3 text-center">Estado</th>
+                            <th class="px-4 py-3 text-end">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="main-table-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalVer" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 25px;">
+            <div class="modal-header border-0 px-4 pt-4 pb-0">
+                <h5 class="fw-bold m-0 text-primary"><i class="bi bi-info-circle-fill me-2"></i>Detalle del Registro</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4" id="ver-content"></div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalLiq" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+            <div class="modal-header p-4 border-bottom border-success d-flex justify-content-between align-items-center" style="background: #f0fdf4; border-radius: 20px 20px 0 0;">
+                <h5 class="fw-bold m-0 text-success">Liquidar Vale</h5>
+                <div id="l-monto-badge" class="badge bg-success rounded-pill px-3 py-2 shadow-sm">₡0</div>
+            </div>
+            <div class="modal-body p-4">
+                <input type="hidden" id="l-id"><input type="hidden" id="l-monto-vale">
+                <div class="row g-3">
+                    <div class="col-12"><label class="small fw-bold text-muted">Recibido por (Encargado)</label><select id="l-recibe" class="form-select selector-tramitadores"></select></div>
+                    <div class="col-6"><label class="small fw-bold text-muted">Fecha (en vale)</label><input type="date" id="l-fecha-man" class="form-control"></div>
+                    <div class="col-6"><label class="small fw-bold text-muted">Hora (en vale)</label><input type="time" id="l-hora-man" class="form-control"></div>
+                    <div class="col-12"><label class="small fw-bold text-muted">Gasto Real ₡</label><input type="number" id="l-gasto" class="form-control fw-bold text-success fs-3"></div>
+                    <div class="col-12"><label class="small fw-bold text-muted">Observaciones</label><textarea id="l-obs" rows="2" class="form-control"></textarea></div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 p-4 pt-0"><button onclick="confirmarLiq()" class="btn btn-success w-100 py-3 fw-bold rounded-4">FINALIZAR LIQUIDACIÓN</button></div>
+        </div>
+    </div>
+</div>
+
+<div id="print-section">
+    <div class="pdf-area">
+        <div class="pdf-box">
+            <div class="pdf-header">
+                <img src="https://images.seeklogo.com/logo-png/2/1/ccss-logo-png_seeklogo-27497.png" class="pdf-logo" crossorigin="anonymous">
+                <div class="pdf-title">CAJA COSTARRICENSE DE SEGURO SOCIAL</div>
+                <div class="pdf-subtitle">SISTEMA VALEFLOW ELITE V2.0</div>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 15px;">
+                <span>REF: <span id="p-cons"></span></span>
+                <span>FECHA: <span id="p-fecha"></span></span>
+            </div>
+            <div style="line-height: 2; font-size: 14px;">
+                <p><b>FUNCIONARIO:</b> <span id="p-nombre" style="text-transform: uppercase;"></span></p>
+                <p><b>CÉDULA:</b> <span id="p-cedula"></span></p>
+                <p><b>AUTORIZADO POR:</b> <span id="p-autoriza"></span></p>
+            </div>
+            <div class="pdf-monto-box">
+                <div class="pdf-monto-txt">SUMA DE: ₡<span id="p-monto"></span></div>
+                <span id="p-monto-letras" class="pdf-letras"></span>
+            </div>
+            <p style="font-size: 14px;"><b>CONCEPTO:</b> <span id="p-concepto"></span></p>
+            <div style="border: 1.5px solid black; padding: 12px; font-size: 11px; margin-top: auto;">
+                <p style="text-align:center; font-weight:bold; text-decoration: underline; margin-bottom: 8px;">CONTROL MANUAL DE CAJA</p>
+                <p>FECHA LIQ: <b id="p-fecha-liq">__________</b> GASTO: <b id="p-gasto">₡ __________</b> VUELTO: <b id="p-vuelto">₡ __________</b></p>
+                <p>RECIBIDO POR: <b id="p-recibe">__________________________________________________</b></p>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-top: 40px;">
+                <div style="border-top: 1.5px solid black; width: 42%; text-align: center; font-weight: bold; font-size: 10px; padding-top: 5px;">ENTREGUÉ CONFORME</div>
+                <div style="border-top: 1.5px solid black; width: 42%; text-align: center; font-weight: bold; font-size: 10px; padding-top: 5px;">RECIBÍ CONFORME</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+    const firebaseConfig = { apiKey: "AIzaSyCHHXKBFCxgNjiPjWqZE6Qu7QZCT9hoTNs", authDomain: "vale-dinero.firebaseapp.com", projectId: "vale-dinero", storageBucket: "vale-dinero.firebasestorage.app", messagingSenderId: "188838069974", appId: "1:188838069974:web:cab7b2b1a8029d74286b77" };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    let nextNum = 1;
+    let bModalVer, bModalLiq;
+
+    // Función Conversora de Números a Letras
+    function numeroALetras(num) {
+        const unidades = ["", "UN", "DOS", "TRES", "CUATRO", "CINCO", "SEIS", "SIETE", "OCHO", "NUEVE"];
+        const decenas = ["DIEZ", "ONCE", "DOCE", "TRECE", "CATORCE", "QUINCE", "DIECISEIS", "DIECISIETE", "DIECIOCHO", "DIECINUEVE"];
+        const decenas2 = ["", "", "VEINTE", "TREINTA", "CUARENTA", "CINCUENTA", "SESENTA", "SETENTA", "OCHENTA", "NOVENTA"];
+        const centenas = ["", "CIENTO", "DOSCIENTOS", "TRESCIENTOS", "CUATROCIENTOS", "QUINIENTOS", "SEISCIENTOS", "SETECIENTOS", "OCHOCIENTOS", "NOVECIENTOS"];
+
+        if (num == 0) return "CERO COLONES EXACTOS";
+        
+        function convertir(n) {
+            if (n < 10) return unidades[n];
+            if (n < 20) return decenas[n - 10];
+            if (n < 100) return decenas2[Math.floor(n / 10)] + (n % 10 !== 0 ? " Y " + unidades[n % 10] : "");
+            if (n < 1000) return (n === 100 ? "CIEN" : centenas[Math.floor(n / 100)]) + (n % 100 !== 0 ? " " + convertir(n % 100) : "");
+            if (n < 1000000) return (n < 2000 ? "MIL" : convertir(Math.floor(n / 1000)) + " MIL") + (n % 1000 !== 0 ? " " + convertir(n % 1000) : "");
+            return "MONTO MUY ALTO";
+        }
+        return convertir(num) + " COLONES EXACTOS";
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        bModalVer = new bootstrap.Modal(document.getElementById('modalVer'));
+        bModalLiq = new bootstrap.Modal(document.getElementById('modalLiq'));
+        cargarTramitadores();
+        sync();
+    });
+
+    function validar() {
+        let ok = true;
+        document.querySelectorAll('.req').forEach(i => { if (i.value.trim() === "") ok = false; });
+        document.getElementById('btn-registrar').disabled = !ok;
+    }
+
+    async function sync() {
+        const q = await db.collection("vales").where("anio", "==", "2026").orderBy("num", "desc").limit(1).get();
+        nextNum = (!q.empty) ? q.docs[0].data().num + 1 : 1;
+        document.getElementById('next-id-display').innerText = `2026-V${nextNum.toString().padStart(4, '0')}`;
+    }
+
+    async function registrarFuncionarioNuevo(ced, nom) {
+        const docRef = db.collection("funcionarios").doc(ced);
+        const doc = await docRef.get();
+        if (!doc.exists) await docRef.set({ nombre: nom.toUpperCase(), cedula: ced, registro: new Date().toISOString() });
+    }
+
+    async function buscarFuncionario(ced) {
+        if (ced.length < 5) return;
+        const doc = await db.collection("funcionarios").doc(ced).get();
+        if (doc.exists) { document.getElementById('f-nombre').value = doc.data().nombre; validar(); }
+    }
+
+    async function crearVale() {
+        const ced = document.getElementById('f-cedula').value;
+        const nom = document.getElementById('f-nombre').value;
+        const data = {
+            anio: "2026", num: nextNum, consecutivo: document.getElementById('next-id-display').innerText,
+            nombre: nom, cedula: ced, autorizadoPor: document.getElementById('f-autoriza').value,
+            monto: parseFloat(document.getElementById('f-monto').value), concepto: document.getElementById('f-concepto').value,
+            fechaLocal: new Date().toLocaleDateString(), fechaISO: new Date().toISOString(), estadoFoto: "⌛ Pendiente"
+        };
+        await db.collection("vales").add(data);
+        await registrarFuncionarioNuevo(ced, nom);
+        imprimirPDF(data);
+        document.querySelectorAll('.req').forEach(i => i.value = "");
+        validar();
+    }
+
+    function imprimirPDF(v) {
+        document.getElementById('p-cons').innerText = v.consecutivo;
+        document.getElementById('p-nombre').innerText = v.nombre;
+        document.getElementById('p-cedula').innerText = v.cedula;
+        document.getElementById('p-autoriza').innerText = v.autorizadoPor;
+        document.getElementById('p-monto').innerText = v.monto.toLocaleString();
+        document.getElementById('p-monto-letras').innerText = numeroALetras(v.monto);
+        document.getElementById('p-concepto').innerText = v.concepto;
+        document.getElementById('p-fecha').innerText = v.fechaLocal;
+
+        const element = document.getElementById('print-section');
+        element.style.display = 'block';
+        
+        const opt = { 
+            margin: 0, 
+            filename: `Vale_${v.consecutivo}.pdf`, 
+            image: { type: 'jpeg', quality: 0.98 }, 
+            html2canvas: { scale: 3, useCORS: true, logging: false }, 
+            jsPDF: { unit: 'mm', format: 'a5', orientation: 'portrait' } 
+        };
+
+        html2pdf().set(opt).from(element).save().then(() => {
+            element.style.display = 'none';
+        });
+    }
+
+    db.collection("vales").orderBy("fechaISO", "desc").onSnapshot(snap => {
+        const tbody = document.getElementById('main-table-body');
+        tbody.innerHTML = "";
+        snap.forEach(doc => {
+            const v = doc.data();
+            const color = v.estadoFoto.includes('✅') ? 'success' : 'warning';
+            tbody.innerHTML += `<tr><td class="px-4 fw-bold text-primary font-monospace small">${v.consecutivo}</td><td class="px-4"><div><b class="text-uppercase small">${v.nombre}</b></div><small class="text-muted">₡${v.monto.toLocaleString()}</small></td><td class="px-4 text-center"><span class="badge bg-${color}-subtle text-${color} rounded-pill px-3">${v.estadoFoto}</span></td><td class="px-4 text-end"><div class="btn-group border rounded-3 overflow-hidden"><button onclick="verDetalles('${doc.id}')" class="btn btn-sm btn-light text-primary"><i class="bi bi-eye-fill"></i></button>${v.estadoFoto === '⌛ Pendiente' ? `<button onclick="abrirLiq('${doc.id}', ${v.monto}, '${v.consecutivo}')" class="btn btn-sm btn-light text-success"><i class="bi bi-check-circle-fill"></i></button>` : ''}<button onclick="reimprimir('${doc.id}')" class="btn btn-sm btn-light text-secondary"><i class="bi bi-printer-fill"></i></button><button onclick="eliminar('${doc.id}')" class="btn btn-sm btn-light text-danger"><i class="bi bi-trash3-fill"></i></button></div></td></tr>`;
+        });
+        sync();
+    });
+
+    async function verDetalles(id) {
+        const doc = await db.collection("vales").doc(id).get();
+        const v = doc.data();
+        let liqHTML = v.estadoFoto === '✅ Liquidado' ? `<div class="col-md-6"><div class="info-panel panel-liquidacion"><div class="panel-titulo text-success">Resultado Liquidación</div><div class="panel-data"><b>Recibido por:</b> ${v.recibidoPor}</div><div class="panel-data"><b>Fecha/Hora:</b> ${v.fechaLiq}</div><div class="panel-data"><b>Gasto Real:</b> ₡${v.totalGasto.toLocaleString()}</div><div class="panel-vuelto">Vuelto: ₡${v.sumaDevolver.toLocaleString()}</div><div class="mt-3 small text-muted"><b>OBSERVACIONES:</b><br>${v.observaciones || 'Sin observaciones'}</div></div></div>` : `<div class="col-md-6"><div style="text-align: center; padding: 40px 0; color: #a0aec0;"><div style="font-size: 4rem; color: #fbbf24; margin-bottom: 15px;"><i class="bi bi-clock-history"></i></div><div class="fw-bold">Pendiente</div><p class="small text-muted mt-2">Sin registros de gasto aún.</p></div></div>`;
+        document.getElementById('ver-content').innerHTML = `<div class="row g-4"><div class="col-md-6"><div class="info-panel panel-emision"><div class="panel-titulo text-primary">Información de Emisión</div><div class="panel-data"><b>Referencia:</b> ${v.consecutivo}</div><div class="panel-data"><b>Funcionario:</b> ${v.nombre}</div><div class="panel-data"><b>Cédula:</b> ${v.cedula}</div><div class="panel-data"><b>Fecha:</b> ${new Date(v.fechaISO).toLocaleString()}</div><div class="panel-data"><b>Autoriza:</b> ${v.autorizadoPor}</div><div class="panel-monto">₡${v.monto.toLocaleString()}</div><div class="mt-3 small text-muted"><b>CONCEPTO:</b><br>${v.concepto}</div></div></div>${liqHTML}</div>`;
+        bModalVer.show();
+    }
+
+    async function cargarTramitadores() {
+        const snap = await db.collection("Tramitadores").get();
+        document.querySelectorAll('.selector-tramitadores').forEach(s => {
+            s.innerHTML = `<option value="">Seleccione...</option>`;
+            snap.forEach(doc => s.innerHTML += `<option value="${doc.data().Nombre}">${doc.data().Nombre}</option>`);
+        });
+    }
+
+    function abrirLiq(id, monto, ref) {
+        document.getElementById('l-id').value = id;
+        document.getElementById('l-monto-vale').value = monto;
+        document.getElementById('l-monto-badge').innerText = `₡${monto.toLocaleString()}`;
+        document.getElementById('l-fecha-man').value = new Date().toISOString().split('T')[0];
+        document.getElementById('l-hora-man').value = new Date().toLocaleTimeString('en-GB').slice(0,5);
+        bModalLiq.show();
+    }
+
+    async function confirmarLiq() {
+        const id = document.getElementById('l-id').value;
+        const montoEntregado = parseFloat(document.getElementById('l-monto-vale').value);
+        const gasto = parseFloat(document.getElementById('l-gasto').value);
+        
+        if (gasto > montoEntregado) {
+            return Swal.fire("Error", "El gasto no puede ser superior al monto entregado", "error");
+        }
+
+        const f = document.getElementById('l-fecha-man').value.split('-').reverse().join('/');
+        const h = document.getElementById('l-hora-man').value;
+        const vuelto = montoEntregado - gasto;
+
+        const data = {
+            estadoFoto: "✅ Liquidado", recibidoPor: document.getElementById('l-recibe').value,
+            totalGasto: gasto, sumaDevolver: vuelto,
+            fechaLiq: `${f} ${h}`, observaciones: document.getElementById('l-obs').value
+        };
+        await db.collection("vales").doc(id).update(data);
+        bModalLiq.hide();
+        Swal.fire({ title: "Liquidado", html: `Suma a devolver: <br><b class="fs-2 text-success">₡${vuelto.toLocaleString()}</b>`, icon: "success" });
+    }
+
+    async function reimprimir(id) { const doc = await db.collection("vales").doc(id).get(); if(doc.exists) imprimirPDF(doc.data()); }
+    async function eliminar(id) { if(prompt("Código (2235):") === "2235") await db.collection("vales").doc(id).delete(); }
+</script>
+</body>
+</html>
